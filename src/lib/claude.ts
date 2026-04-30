@@ -104,7 +104,7 @@ export async function scoreSkill(content: string, businessContext?: string): Pro
 export async function rewriteSkill(
   content: string,
   selectedFixes: string[]
-): Promise<string> {
+): Promise<OptimizerResult> {
   if (content.length > MAX_INPUT_CHARS) {
     throw new Error(`Content exceeds maximum input size of ${MAX_INPUT_CHARS} characters.`);
   }
@@ -122,7 +122,14 @@ export async function rewriteSkill(
   const raw = message.content[0];
   if (raw.type !== "text") throw new ClaudeParseError("Unexpected response type from Claude.");
 
-  return sanitizeOutputOrThrow(raw.text.trim());
+  // Parse the JSON result
+  let parsed: OptimizerResult;
+  try {
+    parsed = JSON.parse(sanitizeOutputOrThrow(raw.text.trim()));
+  } catch (e) {
+    throw new ClaudeParseError("Failed to parse Claude output as OptimizerResult JSON.");
+  }
+  return parsed;
 }
 
 /**

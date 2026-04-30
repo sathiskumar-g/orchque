@@ -64,9 +64,9 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "No valid fixes provided." }, { status: 400 });
     }
 
-    let optimizedContent: string;
+    let result;
     try {
-      optimizedContent = await rewriteSkill(content.trim(), fixes);
+      result = await rewriteSkill(content.trim(), fixes);
     } catch (err) {
       if (err instanceof ClaudeParseError) {
         return NextResponse.json(
@@ -77,7 +77,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       throw err;
     }
 
-    return NextResponse.json({ optimized_content: optimizedContent });
+    return NextResponse.json({ optimized_content: result.optimized_content });
   } catch (err: unknown) {
     logServerError("api/optimize/rewrite/anonymous", err);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Switch } from "@/components/ui/Switch";
 import { Loader2, Sparkles, Download, ArrowRight, X } from "lucide-react";
 import Link from "next/link";

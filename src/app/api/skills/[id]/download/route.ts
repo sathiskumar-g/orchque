@@ -61,7 +61,9 @@ export async function GET(_req: Request, { params }: RouteParams) {
       "info.txt": strToU8(infoContent),
     });
 
-    return new Response(zip, {
+    // Ensure we pass a true ArrayBuffer, not ArrayBufferLike/SharedArrayBuffer
+    const ab = new Uint8Array(zip).buffer.slice(0);
+    return new Response(new Blob([ab]), {
       status: 200,
       headers: {
         "Content-Type": "application/zip",

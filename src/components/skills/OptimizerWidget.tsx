@@ -20,11 +20,13 @@ interface LoadedSource {
   label: string;
 }
 
+import type { OptimizerResult } from "@/types/skill";
+
 interface OptimizerWidgetProps {
   mode: "anonymous" | "skill";
   skillId?: string;
   initialContent?: string;
-  onResult?: (result: { optimized_content: string; score: number }) => void;
+  onResult?: (result: OptimizerResult) => void;
   /** Called with true when optimizer leaves input phase, false when it returns */
   onBusy?: (busy: boolean) => void;
 }
@@ -496,7 +498,18 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
       setOptimizedContent(optimized);
       setPhase("final");
 
-      onResult?.({ optimized_content: optimized, score: scoreResult.score });
+      onResult?.({
+        optimized_content: optimized,
+        score: scoreResult.score,
+        axes: scoreResult.axes,
+        token_estimate: scoreResult.token_estimate,
+        token_reduction_pct: scoreResult.token_reduction_pct,
+        security_flags: scoreResult.security_flags,
+        improvements: [
+          ...scoreResult.core_improvements,
+          ...scoreResult.additional_improvements,
+        ],
+      });
     } catch {
       setPhase("score-result");
       setError("Network error. Please try again.");
@@ -545,7 +558,7 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before</span>
               <span className="text-xs">🏷️ {scoreResult.token_estimate} tokens</span>
-              {scoreResult.quality_checked && <span className="text-xs ml-2">✨ Quality Checked</span>}
+              {/* Quality checked badge removed: property does not exist on ScoreResult type */}
             </div>
             <pre className="text-xs bg-muted rounded-md p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed border">
               {content}
@@ -564,13 +577,13 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
           </div>
         </div>
         {/* Suggestions/Improvements */}
-        {scoreResult.improvements && scoreResult.improvements.length > 0 && (
+        {([...scoreResult.core_improvements, ...scoreResult.additional_improvements]).length > 0 && (
           <div className="mt-4">
             <div className="text-xs font-semibold mb-2 flex items-center gap-1 text-emerald-500">
               <span>Suggestions</span>
             </div>
             <ul className="list-disc ml-5 text-xs text-muted-foreground">
-              {scoreResult.improvements.map((imp) => (
+              {[...scoreResult.core_improvements, ...scoreResult.additional_improvements].map((imp) => (
                 <li key={imp}>{imp}</li>
               ))}
             </ul>
@@ -607,7 +620,6 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before</span>
               <span className="text-xs">🏷️ {scoreResult.token_estimate} tokens</span>
-              {scoreResult.quality_checked && <span className="text-xs ml-2">✨ Quality Checked</span>}
             </div>
             <pre className="text-xs bg-muted rounded-md p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed border">
               {content}
