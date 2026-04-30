@@ -1,4 +1,4 @@
-# saas-template
+# orchque-template
 
 A reusable Next.js 15 SaaS starter. Copy → configure → ship.
 
