@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Zap } from "lucide-react";
 
 export default function CreditChip() {
   const [balance, setBalance] = useState<number | null>(null);
@@ -16,15 +17,13 @@ export default function CreditChip() {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
         balance === 0
           ? "bg-destructive/10 text-destructive"
-          : balance <= 1
-          ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-          : "bg-primary/10 text-primary"
+          : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
       }`}
     >
-      {balance} credit{balance !== 1 ? "s" : ""}
+      <Zap className="h-3 w-3" /> {balance} credit{balance !== 1 ? "s" : ""}
     </span>
   );
 }

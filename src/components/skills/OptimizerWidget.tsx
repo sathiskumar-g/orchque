@@ -450,7 +450,7 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
 
       const score = data as ScoreResult;
       setScoreResult(score);
-      setSelectedFixes(new Set(score.core_improvements)); // Core fixes checked by default
+      setSelectedFixes(new Set([...score.core_improvements, ...score.additional_improvements])); // All fixes checked by default
       setPhase("score-result");
 
       // Consume trial on successful score
@@ -548,122 +548,103 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
     );
   }
 
-  // ── Score Result Phase: Show Before panel with analytics ──
-  if (phase === "score-result" && scoreResult) {
+  // Final phase: show optimized result (early return before modal)
+  if (phase === "final" && optimizedContent && scoreResult) {
     return (
-      <div className="space-y-6 overflow-auto max-h-screen">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Before panel */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before</span>
-              <span className="text-xs">🏷️ {scoreResult.token_estimate} tokens</span>
-              {/* Quality checked badge removed: property does not exist on ScoreResult type */}
-            </div>
-            <pre className="text-xs bg-muted rounded-md p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed border">
-              {content}
-            </pre>
-            <div className="mt-3">
-              <ScoreRing score={scoreResult.score} />
-              <div className="mt-2">
-                <ScoreAxes axes={scoreResult.axes} />
-              </div>
-              {scoreResult.security_flags && scoreResult.security_flags.length > 0 && (
-                <div className="mt-2">
-                  <SecurityFlagList flags={scoreResult.security_flags} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        {/* Suggestions/Improvements */}
-        {([...scoreResult.core_improvements, ...scoreResult.additional_improvements]).length > 0 && (
-          <div className="mt-4">
-            <div className="text-xs font-semibold mb-2 flex items-center gap-1 text-emerald-500">
-              <span>Suggestions</span>
-            </div>
-            <ul className="list-disc ml-5 text-xs text-muted-foreground">
-              {[...scoreResult.core_improvements, ...scoreResult.additional_improvements].map((imp) => (
-                <li key={imp}>{imp}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {/* Apply fixes button */}
-        <div className="flex gap-2 mt-6">
+      <div className="space-y-4">
+        {/* Before/After diff accordion */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
           <button
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
-            onClick={handleApplyFixes}
-            disabled={loading}
+            onClick={() => setShowFullDiff(!showFullDiff)}
+            className="w-full px-6 py-4 border-b border-border/40 flex items-center justify-between hover:bg-muted/30 transition-colors"
           >
-            Apply Fixes
+            <div className="text-left">
+              <h3 className="text-base font-semibold tracking-tight">Before / After Diff</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Click to expand and review changes</p>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showFullDiff ? "rotate-180" : ""}`} />
           </button>
-          <button
-            className="border px-4 py-2 rounded-md text-sm font-medium hover:bg-accent transition-colors"
-            onClick={() => setPhase("input")}
-            disabled={loading}
-          >
-            Back
-          </button>
+          {showFullDiff && (
+            <div className="p-6 overflow-auto max-h-96">
+              <SkillDiff original={content} optimized={optimizedContent} />
+              <button
+                onClick={() => setShowFullDiff(false)}
+                className="text-xs text-muted-foreground hover:text-foreground mt-4 underline-offset-2 hover:underline"
+              >
+                Collapse
+              </button>
+            </div>
+          )}
         </div>
-      </div>
-    );
-  }
 
-  // ── Final Phase: Show Before/After panels with analytics and diff ──
-  if (phase === "final" && scoreResult && optimizedContent) {
-    return (
-      <div className="space-y-6 overflow-auto max-h-screen">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Before panel */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before</span>
-              <span className="text-xs">🏷️ {scoreResult.token_estimate} tokens</span>
+        {/* Optimized content + download */}
+        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-semibold tracking-tight">Optimized Skill</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Ready to use</p>
             </div>
-            <pre className="text-xs bg-muted rounded-md p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed border">
-              {content}
-            </pre>
-            <div className="mt-3">
-              <ScoreRing score={scoreResult.score} />
-              <div className="mt-2">
-                <ScoreAxes axes={scoreResult.axes} />
-              </div>
-              {scoreResult.security_flags && scoreResult.security_flags.length > 0 && (
-                <div className="mt-2">
-                  <SecurityFlagList flags={scoreResult.security_flags} />
-                </div>
-              )}
-            </div>
+            <button
+              onClick={() => downloadMd(optimizedContent)}
+              className="flex items-center gap-1.5 text-xs font-medium bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg border border-border/50 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download .md
+            </button>
           </div>
-          {/* After panel */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-emerald-400">After</span>
-              <span className="text-xs">🏷️ {optimizedContent.length / 4 | 0} tokens</span>
-              <span className="text-xs ml-2">✨ Quality Checked</span>
-            </div>
-            <pre className="text-xs bg-muted rounded-md p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed border border-emerald-400/20">
+          <div className="p-5">
+            <pre className="text-sm bg-muted/40 rounded-lg p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed text-foreground/85">
               {optimizedContent}
             </pre>
-            <div className="mt-3">
-              {/* Optionally, show updated analytics if available */}
-              {/* <ScoreRing score={scoreResult.score} /> */}
-              {/* <ScoreAxes axes={scoreResult.axes} /> */}
-            </div>
           </div>
         </div>
-        {/* Visual diff */}
-        <div className="mt-6">
-          <SkillDiff original={content} optimized={optimizedContent} />
-        </div>
+
+        {/* Signup nudge for anonymous */}
+        {mode === "anonymous" && (
+          <div className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold">Save your optimization history</p>
+              <p className="text-xs text-muted-foreground mt-1">Sign up free · 10 actions/month · Track all versions</p>
+            </div>
+            <Link
+              href="/auth/signup"
+              className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              Sign up <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+
+        {/* Single-file tracking suggestion in final phase */}
+        {isSingleFile && loadedSource?.type !== "url" && (
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 flex gap-3">
+            <span className="text-base shrink-0">💡</span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">Add companion files for better tracking</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Create <code className="bg-muted rounded px-1 text-xs font-mono">log.md</code> to record what changed and why,
+                {" "}<code className="bg-muted rounded px-1 text-xs font-mono">memory.md</code> for agent context that persists across runs.
+                Drop the full skill folder next time to optimize all linked files together.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Try again button */}
+        <button
+          onClick={() => { setPhase("input"); setScoreResult(null); setOptimizedContent(null); setContent(""); setLoadedSource(null); }}
+          className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors w-full text-center py-2"
+        >
+          ← Optimize another skill
+        </button>
       </div>
     );
   }
 
-  // Input phase
-  if (phase === "input") {
-    return (
+  const showModal = phase === "scoring" || phase === "score-result" || phase === "rewriting";
+
+  return (
+    <>
       <div className="space-y-4">
         {/* Tab bar */}
         <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 border border-border/40">
@@ -893,257 +874,158 @@ export function OptimizerWidget({ mode, skillId, initialContent = "", onResult, 
           Anonymous optimization is processed temporarily and not saved. Avoid sharing API keys, passwords, or private client data.
         </p>
       </div>
-    );
-  }
 
-  // Scoring phase
-  if (phase === "scoring") {
-    return (
-      <div className="flex flex-col items-center justify-center gap-4 py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <div className="text-center">
-          <p className="text-sm font-medium">Analyzing your skill…</p>
-          <p className="text-xs text-muted-foreground mt-1">Checking security, quality, and token usage</p>
-        </div>
-      </div>
-    );
-  }
+      {/* Modal overlay for scoring / analysis results / rewriting */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && phase === "score-result") {
+              setPhase("input");
+              setScoreResult(null);
+            }
+          }}
+        >
+          <div className="bg-card border border-border/60 rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
 
-  // Score result phase
-  if (phase === "score-result" && scoreResult) {
-    const allImprovements = [...scoreResult.core_improvements, ...scoreResult.additional_improvements];
-    const selectedCount = selectedFixes.size;
-    const coreChecked = scoreResult.core_improvements.filter((f) => selectedFixes.has(f)).length;
-    const additionalChecked = scoreResult.additional_improvements.filter((f) => selectedFixes.has(f)).length;
-
-    return (
-      <div className="space-y-4">
-        {/* Single-file tracking suggestion */}
-        {isSingleFile && loadedSource?.type !== "url" && (
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 flex gap-3">
-            <span className="text-base shrink-0">💡</span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Improve skill tracking with companion files</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                You shared a single file. Add <code className="bg-muted rounded px-1 text-xs font-mono">log.md</code> for change history and
-                {" "}<code className="bg-muted rounded px-1 text-xs font-mono">memory.md</code> for persistent context — then drop the full folder next time.
-              </p>
-              <div className="flex gap-1.5 mt-2.5 flex-wrap">
-                {["log.md", "memory.md", "references/", "scripts/"].map((f) => (
-                  <span key={f} className="text-xs bg-muted/70 border border-border/50 rounded px-2 py-0.5 font-mono">{f}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Score card */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold tracking-tight">Optimization Score</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Analysis of your skill</p>
-            </div>
-            <span className={`text-3xl font-bold tabular-nums ${scoreResult.score >= 75 ? "text-emerald-400" : scoreResult.score >= 50 ? "text-yellow-400" : "text-red-400"}`}>
-              {scoreResult.score}
-            </span>
-          </div>
-          <div className="p-6 space-y-5">
-            <ScoreRing score={scoreResult.score} />
-            <ScoreAxes axes={scoreResult.axes} />
-            <div className="flex items-center gap-2 flex-wrap pt-1">
-              <div className="flex items-center gap-1.5 rounded-full bg-muted/70 border border-border/50 px-3 py-1">
-                <TokenEstimate tokens={scoreResult.token_estimate} />
-              </div>
-              {scoreResult.token_reduction_pct > 0 && (
-                <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-3 py-1">
-                  <span className="text-xs font-semibold text-emerald-400">↓ {scoreResult.token_reduction_pct}% smaller</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Security flags */}
-        {scoreResult.security_flags.length > 0 && (
-          <div className="rounded-xl border border-red-500/25 bg-card overflow-hidden">
-            <div className="px-6 py-4 border-b border-red-500/20 bg-red-950/20">
-              <h3 className="text-base font-semibold text-red-400 flex items-center gap-2">
-                <span>⚠</span> Security Flags
-              </h3>
-              <p className="text-xs text-red-400/70 mt-0.5">{scoreResult.security_flags.length} issue{scoreResult.security_flags.length !== 1 ? "s" : ""} found</p>
-            </div>
-            <div className="p-5">
-              <SecurityFlagList flags={scoreResult.security_flags} />
-            </div>
-          </div>
-        )}
-
-        {/* Improvements accordion with checkboxes */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-border/40">
-            <h3 className="text-base font-semibold tracking-tight">Improvements ({selectedCount} selected)</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Check the fixes you want to apply</p>
-          </div>
-          <div className="divide-y divide-border/40">
-            {/* Core improvements */}
-            {scoreResult.core_improvements.length > 0 && (
-              <div className="p-5 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Core Fixes (Security & Correctness)</p>
-                <div className="space-y-2">
-                  {scoreResult.core_improvements.map((fix) => (
-                    <label key={fix} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-muted/40 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedFixes.has(fix)}
-                        onChange={() => toggleFix(fix)}
-                        className="h-4 w-4 rounded border border-border text-primary focus:ring-2 focus:ring-primary"
-                      />
-                      <span className="text-sm text-foreground">{fix}</span>
-                    </label>
-                  ))}
+            {/* Scoring loading */}
+            {phase === "scoring" && (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 px-6">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">🔍 Analyzing your skill…</p>
+                  <p className="text-xs text-muted-foreground mt-1">Checking security, quality, and token usage</p>
                 </div>
               </div>
             )}
 
-            {/* Additional improvements */}
-            {scoreResult.additional_improvements.length > 0 && (
-              <div className="p-5 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Additional Improvements (Quality & Optimization)</p>
-                <div className="space-y-2">
-                  {scoreResult.additional_improvements.map((fix) => (
-                    <label key={fix} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-muted/40 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedFixes.has(fix)}
-                        onChange={() => toggleFix(fix)}
-                        className="h-4 w-4 rounded border border-border text-primary focus:ring-2 focus:ring-primary"
-                      />
-                      <span className="text-sm text-foreground">{fix}</span>
-                    </label>
-                  ))}
+            {/* Rewriting loading */}
+            {phase === "rewriting" && (
+              <div className="flex flex-col items-center justify-center gap-4 py-16 px-6">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">✍️ Applying selected fixes…</p>
+                  <p className="text-xs text-muted-foreground mt-1">Rewriting your skill with improvements</p>
                 </div>
               </div>
             )}
+
+            {/* Score result */}
+            {phase === "score-result" && scoreResult && (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="text-base font-semibold">✅ Analysis Complete</h2>
+                      <p className="text-xs text-muted-foreground mt-0.5">Review metrics and select fixes to apply</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className={`text-3xl font-bold tabular-nums leading-none ${scoreResult.score >= 75 ? "text-emerald-400" : scoreResult.score >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+                        {scoreResult.score}
+                      </span>
+                      <span className="text-sm text-muted-foreground self-end pb-0.5">/100</span>
+                    </div>
+                    {scoreResult.security_flags.length > 0 && (
+                      <span className="text-[11px] bg-red-500/15 text-red-400 border border-red-500/25 rounded-full px-2 py-0.5 font-medium shrink-0">
+                        ⚠ {scoreResult.security_flags.length} security issue{scoreResult.security_flags.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => { setPhase("input"); setScoreResult(null); }}
+                    className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground shrink-0 ml-4"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Scrollable body */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  {/* Metrics row */}
+                  <div className="flex gap-6 items-start">
+                    <ScoreRing score={scoreResult.score} />
+                    <div className="flex-1 min-w-0">
+                      <ScoreAxes axes={scoreResult.axes} />
+                    </div>
+                  </div>
+
+                  {/* Token badges */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="inline-flex items-center gap-1 rounded-full bg-muted/70 border border-border/50 px-3 py-1">
+                      <TokenEstimate tokens={scoreResult.token_estimate} />
+                    </div>
+                    {scoreResult.token_reduction_pct > 0 && (
+                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 px-3 py-1">
+                        <span className="text-xs font-semibold text-emerald-400">↓ {scoreResult.token_reduction_pct}% smaller after optimization</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Security flags */}
+                  {scoreResult.security_flags.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-red-400 uppercase tracking-wide mb-3">⚠ Security Issues</p>
+                      <SecurityFlagList flags={scoreResult.security_flags} />
+                    </div>
+                  )}
+
+                  <div className="h-px bg-border/40" />
+
+                  {/* Single-file tip */}
+                  {isSingleFile && loadedSource?.type !== "url" && (
+                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 flex gap-3">
+                      <span className="text-sm shrink-0">💡</span>
+                      <p className="text-xs text-muted-foreground">Add <code className="bg-muted rounded px-1 font-mono">log.md</code> + <code className="bg-muted rounded px-1 font-mono">memory.md</code> and drop the full folder next time for better tracking.</p>
+                    </div>
+                  )}
+
+                  {/* Checkboxes */}
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                      🛠️ Select fixes to apply <span className="font-bold text-foreground">({selectedFixes.size} selected)</span>
+                    </p>
+                    <div className="space-y-1">
+                      {scoreResult.core_improvements.map((fix) => (
+                        <label key={fix} className="flex items-start gap-3 cursor-pointer px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+                          <input type="checkbox" checked={selectedFixes.has(fix)} onChange={() => toggleFix(fix)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary" />
+                          <span className="flex-1 text-sm leading-relaxed">{fix}</span>
+                          <span className="shrink-0 text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-1.5 py-0.5 leading-none self-start mt-1">Core</span>
+                        </label>
+                      ))}
+                      {scoreResult.additional_improvements.map((fix) => (
+                        <label key={fix} className="flex items-start gap-3 cursor-pointer px-3 py-2.5 rounded-lg hover:bg-muted/50 transition-colors">
+                          <input type="checkbox" checked={selectedFixes.has(fix)} onChange={() => toggleFix(fix)} className="mt-0.5 h-4 w-4 shrink-0 rounded border-border accent-primary" />
+                          <span className="flex-1 text-sm leading-relaxed">{fix}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="shrink-0 border-t border-border/40 px-6 py-4 flex items-center justify-between gap-3">
+                  <button
+                    onClick={() => { setPhase("input"); setScoreResult(null); }}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    onClick={handleApplyFixes}
+                    disabled={loading || selectedFixes.size === 0}
+                    className="h-10 px-6 rounded-lg bg-primary text-primary-foreground font-semibold text-sm inline-flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                    Apply {selectedFixes.size} fix{selectedFixes.size !== 1 ? "es" : ""}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
-
-        {/* Apply fixes button */}
-        <button
-          onClick={handleApplyFixes}
-          disabled={loading || selectedCount === 0}
-          className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Applying fixes…</>
-          ) : (
-            <>Apply {selectedCount} selected fixes</>
-          )}
-        </button>
-
-        {/* Cancel */}
-        <button
-          onClick={() => { setPhase("input"); setScoreResult(null); }}
-          className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors w-full text-center py-2"
-        >
-          ← Back to input
-        </button>
-      </div>
-    );
-  }
-
-  // Final phase: show diff + optimized content
-  if (phase === "final" && optimizedContent && scoreResult) {
-    return (
-      <div className="space-y-4">
-        {/* Before/After diff accordion */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <button
-            onClick={() => setShowFullDiff(!showFullDiff)}
-            className="w-full px-6 py-4 border-b border-border/40 flex items-center justify-between hover:bg-muted/30 transition-colors"
-          >
-            <div className="text-left">
-              <h3 className="text-base font-semibold tracking-tight">Before / After Diff</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Click to expand and review changes</p>
-            </div>
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showFullDiff ? "rotate-180" : ""}`} />
-          </button>
-          {showFullDiff && (
-            <div className="p-6 overflow-auto max-h-96">
-              <SkillDiff original={content} optimized={optimizedContent} />
-              <button
-                onClick={() => setShowFullDiff(false)}
-                className="text-xs text-muted-foreground hover:text-foreground mt-4 underline-offset-2 hover:underline"
-              >
-                Collapse
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Optimized content + download */}
-        <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-border/40 flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold tracking-tight">Optimized Skill</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Ready to use</p>
-            </div>
-            <button
-              onClick={() => downloadMd(optimizedContent)}
-              className="flex items-center gap-1.5 text-xs font-medium bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-lg border border-border/50 transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download .md
-            </button>
-          </div>
-          <div className="p-5">
-            <pre className="text-sm bg-muted/40 rounded-lg p-4 overflow-auto max-h-72 whitespace-pre-wrap break-words font-mono leading-relaxed text-foreground/85">
-              {optimizedContent}
-            </pre>
-          </div>
-        </div>
-
-        {/* Signup nudge for anonymous */}
-        {mode === "anonymous" && (
-          <div className="rounded-xl border border-primary/25 bg-gradient-to-r from-primary/5 via-primary/8 to-primary/5 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">Save your optimization history</p>
-              <p className="text-xs text-muted-foreground mt-1">Sign up free · 10 actions/month · Track all versions</p>
-            </div>
-            <Link
-              href="/auth/signup"
-              className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              Sign up <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        )}
-
-        {/* Single-file tracking suggestion in final phase */}
-        {isSingleFile && loadedSource?.type !== "url" && (
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-5 py-4 flex gap-3">
-            <span className="text-base shrink-0">💡</span>
-            <div className="min-w-0">
-              <p className="text-sm font-medium">Add companion files for better tracking</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Create <code className="bg-muted rounded px-1 text-xs font-mono">log.md</code> to record what changed and why,
-                {" "}<code className="bg-muted rounded px-1 text-xs font-mono">memory.md</code> for agent context that persists across runs.
-                Drop the full skill folder next time to optimize all linked files together.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Try again button */}
-        <button
-          onClick={() => { setPhase("input"); setScoreResult(null); setOptimizedContent(null); setContent(""); setLoadedSource(null); }}
-          className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors w-full text-center py-2"
-        >
-          ← Optimize another skill
-        </button>
-      </div>
-    );
-  }
-
-  return null;
+      )}
+    </>
+  );
 }

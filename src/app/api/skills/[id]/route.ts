@@ -24,7 +24,7 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
     // Fetch skill — verify it belongs to this user
     const { data: skill, error: skillError } = await admin
       .from("skills")
-      .select("id, user_id, name, created_at")
+      .select("id, user_id, name, context, created_at")
       .eq("id", id)
       .eq("user_id", user.id)
       .single();
@@ -53,6 +53,69 @@ export async function GET(_request: Request, { params }: RouteParams): Promise<N
     });
   } catch (err: unknown) {
     console.error("[api/skills/[id] GET] Error:", err);
+    return NextResponse.json({ error: "Internal server error." }, { status: 500 });
+  }
+}
+
+// ─── PATCH /api/skills/[id] — update skill context ───────────────────────────
+
+export async function PATCH(request: Request, { params }: RouteParams): Promise<NextResponse> {
+  try {
+    const user = await getServerUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ error: "Missing skill id." }, { status: 400 });
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+
+    const { context, name } = (body ?? {}) as Record<string, unknown>;
+
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+    if (typeof name === "string") {
+      const nameTrimmed = name.trim();
+      if (nameTrimmed.length === 0 || nameTrimmed.length > 120) {
+        return NextResponse.json({ error: "Name must be 1–120 characters." }, { status: 400 });
+      }
+      // Only allow letters, numbers, spaces, hyphens, underscores, apostrophes
+      if (!/^[\p{L}\p{N} '\-_]+$/u.test(nameTrimmed)) {
+        return NextResponse.json({ error: "Name may only contain letters, numbers, spaces and -_'." }, { status: 400 });
+      }
+      updates.name = nameTrimmed;
+    }
+
+    if ("context" in (body as object)) {
+      updates.context = typeof context === "string" && context.trim().length > 0
+        ? context.trim().slice(0, 250)
+        : null;
+    }
+
+    const admin = createAdminClient();
+
+    const { error } = await admin
+      .from("skills")
+      .update(updates)
+      .eq("id", id)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("[api/skills/[id] PATCH] DB error:", error);
+      return NextResponse.json({ error: error.message ?? "Failed to update skill." }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    console.error("[api/skills/[id] PATCH] Error:", err);
     return NextResponse.json({ error: "Internal server error." }, { status: 500 });
   }
 }

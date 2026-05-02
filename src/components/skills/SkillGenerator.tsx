@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { Switch } from "@/components/ui/Switch";
 import { Loader2, Sparkles, Download, ArrowRight, X } from "lucide-react";
 import Link from "next/link";
 import type { GeneratorResult } from "@/types/skill";
@@ -9,6 +8,8 @@ import type { GeneratorResult } from "@/types/skill";
 interface SkillGeneratorProps {
   mode: "anonymous" | "skill";
   onResult?: (result: GeneratorResult) => void;
+  saveToSkills?: boolean;
+  onSaveStatus?: (status: "idle" | "saving" | "saved" | "error") => void;
 }
 
 const EXAMPLE_DESCRIPTIONS = [
@@ -28,14 +29,13 @@ function downloadMd(title: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function SkillGenerator({ mode, onResult }: SkillGeneratorProps) {
+export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStatus }: SkillGeneratorProps) {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GeneratorResult | null>(null);
   const [trialUsed, setTrialUsed] = useState(false);
-  // Save toggle and status
-  const [saveToSkills, setSaveToSkills] = useState(true);
+  // internal save state (for result view status display)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -91,6 +91,9 @@ export function SkillGenerator({ mode, onResult }: SkillGeneratorProps) {
     setResult(null);
     setTrialUsed(false);
     setError(null);
+    setSaveStatus("idle");
+    setSaveError(null);
+    onSaveStatus?.("idle");
   }
 
   // ── Result view ───────────────────────────────────────────────────────────────
@@ -98,22 +101,29 @@ export function SkillGenerator({ mode, onResult }: SkillGeneratorProps) {
   async function handleSaveSkill() {
     if (!result || saveStatus === "saving" || mode === "anonymous") return;
     setSaveStatus("saving");
+    onSaveStatus?.("saving");
     setSaveError(null);
     try {
+      const now = new Date();
+      const pad = (n: number) => n.toString().padStart(2, "0");
+      const autoName = `untitled-${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
       const res = await fetch("/api/skills", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: result.title, content: result.content }),
+        body: JSON.stringify({ name: autoName, content: result.content, source: "generated" }),
       });
       const data = await res.json();
       if (!res.ok) {
         setSaveStatus("error");
+        onSaveStatus?.("error");
         setSaveError(data.error || "Failed to save skill.");
         return;
       }
       setSaveStatus("saved");
-    } catch (e) {
+      onSaveStatus?.("saved");
+    } catch {
       setSaveStatus("error");
+      onSaveStatus?.("error");
       setSaveError("Network error. Please try again.");
     }
   }
@@ -149,19 +159,12 @@ export function SkillGenerator({ mode, onResult }: SkillGeneratorProps) {
           </div>
         </div>
 
-        {/* Save to skills toggle */}
-        {mode === "skill" && (
-          <div className="flex items-center gap-3 mb-2">
-            <Switch checked={saveToSkills} onCheckedChange={(v) => {
-              setSaveToSkills(v);
-              if (v && saveStatus === "idle") handleSaveSkill();
-            }} id="save-to-skills" />
-            <label htmlFor="save-to-skills" className="text-xs font-medium select-none cursor-pointer">
-              Save to skills
-            </label>
-            {saveStatus === "saving" && <span className="text-xs text-muted-foreground ml-2">Saving…</span>}
-            {saveStatus === "saved" && <span className="text-xs text-green-600 ml-2">Saved!</span>}
-            {saveStatus === "error" && <span className="text-xs text-red-600 ml-2">{saveError}</span>}
+        {/* Save status (shown in result view when not using parent toggle) */}
+        {mode === "skill" && saveStatus !== "idle" && (
+          <div className="flex items-center gap-2 text-xs">
+            {saveStatus === "saving" && <span className="text-muted-foreground animate-pulse">Saving to skills…</span>}
+            {saveStatus === "saved" && <span className="text-emerald-500">✓ Saved to skills</span>}
+            {saveStatus === "error" && <span className="text-destructive">{saveError ?? "Failed to save"}</span>}
           </div>
         )}
 
@@ -196,7 +199,7 @@ export function SkillGenerator({ mode, onResult }: SkillGeneratorProps) {
               Sign up for more <ArrowRight className="h-3 w-3" />
             </Link>
           )}
-          {mode === "skill" && !saveToSkills && (
+          {mode === "skill" && saveStatus === "idle" && !saveToSkills && (
             <button
               onClick={handleSaveSkill}
               className="text-xs text-primary hover:underline ml-2"
@@ -247,7 +250,7 @@ export function SkillGenerator({ mode, onResult }: SkillGeneratorProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe the skill in plain language — e.g. 'A code review skill that checks for security issues, test coverage, and SOLID principles'"
-          className="w-full min-h-32 rounded-lg border border-border/60 bg-muted/40 px-4 py-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/60"
+          className="w-full min-h-48 rounded-lg border border-border/60 bg-muted/40 px-4 py-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/60"
           disabled={loading}
           maxLength={2000}
         />

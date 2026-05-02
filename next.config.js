@@ -17,9 +17,6 @@ const nextConfig = {
   // Prevent webpack from bundling undici — it must run as a native Node module
   // so the TCP socket family:4 option works correctly.
   serverExternalPackages: ["undici"],
-  turbopack: {
-    root: __dirname,
-  },
 };
 
 module.exports = nextConfig;

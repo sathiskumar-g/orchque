@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerUser } from "@/lib/server-user";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { validateSkillContent } from "@/lib/skill-optimizer-prompt";
+import { checkSkillLimit } from "@/lib/credits-service";
 import {
   detectSensitiveData,
   getSensitiveDataErrorMessage,
@@ -35,7 +36,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const { name, content } = body as Record<string, unknown>;
+    const { name, content, context, source } = body as Record<string, unknown>;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json({ error: "name is required." }, { status: 400 });
@@ -64,10 +65,22 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const admin = createAdminClient();
 
+    // Check free plan skill limit
+    const skillLimitError = await checkSkillLimit(user.id);
+    if (skillLimitError) {
+      return NextResponse.json({ error: skillLimitError, code: "skill_limit_reached" }, { status: 403 });
+    }
+
+    const contextVal = typeof context === "string" && context.trim().length > 0
+      ? context.trim().slice(0, 250)
+      : null;
+
+    const sourceVal = source === 'optimized' || source === 'generated' ? source : null;
+
     // Insert skill
     const { data: skill, error: skillError } = await admin
       .from("skills")
-      .insert({ user_id: user.id, name: name.trim() })
+      .insert({ user_id: user.id, name: name.trim(), context: contextVal, source: sourceVal })
       .select()
       .single();
 

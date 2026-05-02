@@ -37,9 +37,17 @@ CREATE TABLE IF NOT EXISTS public.skills (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name        text        NOT NULL CHECK (char_length(name) BETWEEN 1 AND 120),
+  context     text        CHECK (context IS NULL OR char_length(context) <= 250),
+  source      text        CHECK (source IS NULL OR source IN ('optimized', 'generated')),
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
+
+-- Add context column if upgrading existing schema
+ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS context text CHECK (context IS NULL OR char_length(context) <= 250);
+
+-- Add source column if upgrading existing schema
+ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS source text CHECK (source IS NULL OR source IN ('optimized', 'generated'));
 
 CREATE INDEX IF NOT EXISTS skills_user_id_idx ON public.skills (user_id, created_at DESC);
 
@@ -159,6 +167,8 @@ CREATE POLICY "support_messages: owner insert"
 -- ── SQL Functions ─────────────────────────────────────────────────────────────
 
 -- Atomically check balance and deduct. Called from credits-service.ts.
+-- monthly_credits is used as the lifetime credit pool for free users.
+-- Pro users bypass this function entirely (checked at API layer by plan).
 CREATE OR REPLACE FUNCTION public.check_and_deduct_credits(
   p_user_id uuid,
   p_cost    integer
@@ -239,7 +249,7 @@ SET search_path = public
 AS $$
 BEGIN
   INSERT INTO public.user_credits (user_id, plan, monthly_credits, bonus_credits)
-  VALUES (NEW.id, 'free', 10, 0)
+  VALUES (NEW.id, 'free', 10, 0)  -- 10 lifetime credits for free tier
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
 END;

@@ -120,3 +120,17 @@ export function getSupportTicketEmail(
   `;
   return emailShell("🎫", "New Support Ticket", body);
 }
+
+// ─── User ticket confirmation ──────────────────────────────────────────────
+
+export function getSupportTicketConfirmationEmail(subject: string, ticketId: string) {
+  const shortId = ticketId.slice(0, 8).toUpperCase();
+  const body = `
+    <p style="font-size: 15px; color: #111111;">Thanks for reaching out! We've received your request and will get back to you soon.</p>
+    ${infoBox("Ticket ID", `#${shortId}`)}
+    ${infoBox("Subject", subject)}
+    <div class="action-box">🕐 <strong>Expected response:</strong> Within 24–48 hours.</div>
+    <p style="margin-top: 20px; font-size: 14px; color: #888888;">You can view your ticket status in the <strong>Support</strong> section of your dashboard.</p>
+  `;
+  return emailShell("✅", "Support Ticket Received", body);
+}

@@ -2,6 +2,8 @@ export type Skill = {
   id: string
   user_id: string
   name: string
+  context: string | null
+  source: 'optimized' | 'generated' | null
   created_at: string
 }
 

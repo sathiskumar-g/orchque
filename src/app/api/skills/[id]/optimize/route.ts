@@ -11,7 +11,7 @@ import {
   logServerError,
   validateRequestOrigin,
 } from "@/lib/security-guards";
-import type { OptimizerResult, SkillVersion } from "@/types/skill";
+import type { OptimizerResult } from "@/types/skill";
 
 // 10 optimize calls per user per minute
 const OPTIMIZE_LIMIT = { maxRequests: 10, windowMs: 60 * 1000 };
@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
     // Verify skill ownership + get active version content
     const { data: skill, error: skillError } = await admin
       .from("skills")
-      .select("id, user_id")
+      .select("id, user_id, context")
       .eq("id", id)
       .eq("user_id", user.id)
       .single();
@@ -111,8 +111,11 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
 
     // Call Claude
     let result: OptimizerResult;
+    const skillContext = typeof (skill as Record<string, unknown>).context === "string"
+      ? (skill as Record<string, unknown>).context as string
+      : undefined;
     try {
-      result = await optimizeSkill(content);
+      result = await optimizeSkill(content, skillContext);
     } catch (err) {
       // Refund on Claude failure
       await refundCredits(user.id).catch(() => {});
@@ -126,7 +129,7 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
       throw err;
     }
 
-    // Calculate next version number (e.g. v1.0 → v1.1 → v1.2)
+    // Calculate next version number for preview label (not saved yet)
     const { data: allVersions } = await admin
       .from("skill_versions")
       .select("version")
@@ -136,49 +139,12 @@ export async function POST(request: Request, { params }: RouteParams): Promise<N
     const versionCount = allVersions?.length ?? 1;
     const nextVersion = `v1.${versionCount}`;
 
-    // Deactivate current active version
-    await admin
-      .from("skill_versions")
-      .update({ is_active: false })
-      .eq("skill_id", id)
-      .eq("is_active", true);
-
-    // Save new version
-    const { data: newVersion, error: insertError } = await admin
-      .from("skill_versions")
-      .insert({
-        skill_id: id,
-        version: nextVersion,
-        content: result.optimized_content,
-        score: result.score,
-        token_estimate: result.token_estimate,
-        token_reduction_pct: result.token_reduction_pct,
-        security_flags: result.security_flags,
-        improvements: result.improvements,
-        axes: result.axes,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (insertError || !newVersion) {
-      // Refund — we saved nothing
-      await refundCredits(user.id).catch(() => {});
-      // Re-activate previous version
-      await admin
-        .from("skill_versions")
-        .update({ is_active: true })
-        .eq("id", activeVersion.id);
-      logServerError("api/skills/[id]/optimize insert version", insertError?.message);
-      return NextResponse.json({ error: "Failed to save optimized version. Credits refunded." }, { status: 500 });
-    }
-
-    const typedVersion = newVersion as SkillVersion;
-
+    // Return result WITHOUT saving — client will call /versions to accept & save
     return NextResponse.json({
       ...result,
-      version_id: typedVersion.id,
-      version: nextVersion,
+      next_version: nextVersion,
+      original_content: content,
+      original_version: activeVersion.version,
       credits_remaining: deduction.balanceAfter,
     });
   } catch (err: unknown) {

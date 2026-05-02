@@ -86,6 +86,17 @@ export function SkillCard({ skill }: SkillCardProps) {
         <Share2 className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
 
+      {/* Security badge — top-left corner, only when scored */}
+      {latest?.score != null && (
+        <div
+          aria-label={`Security checked — Score ${latest.score}`}
+          title={`Security checked — Score ${latest.score}`}
+          className="absolute top-2.5 left-2.5 h-7 w-7 rounded-full flex items-center justify-center bg-emerald-500/15 border border-emerald-500/30 z-10"
+        >
+          <span className="text-sm leading-none select-none">🛡️</span>
+        </div>
+      )}
+
       {/* Emoji area — top ~55% */}
       <div className="flex-1 flex items-center justify-center">
         <span className="text-5xl select-none leading-none" role="img">{palette.emoji}</span>
@@ -102,6 +113,12 @@ export function SkillCard({ skill }: SkillCardProps) {
           <span className="text-xs font-semibold truncate group-hover:text-primary transition-colors">
             {skill.name}
           </span>
+          {skill.source === "optimized" && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-400 border border-violet-500/25 leading-none">✨ Optimized</span>
+          )}
+          {skill.source === "generated" && (
+            <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 leading-none">⚡ Generated</span>
+          )}
         </div>
         {/* Row 2 — version */}
         <div className="flex items-center gap-2">

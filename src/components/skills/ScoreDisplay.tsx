@@ -25,30 +25,30 @@ function axisColor(val: number): { bar: string; text: string } {
 }
 
 export function ScoreRing({ score }: ScoreRingProps) {
-  const r = 46;
+  const r = 36;
   const circ = 2 * Math.PI * r;
   const offset = circ - (score / 100) * circ;
 
   return (
-    <div className="relative flex items-center justify-center w-32 h-32 shrink-0">
-      <svg width="128" height="128" className="-rotate-90 absolute inset-0">
-        <circle cx="64" cy="64" r={r} fill="none" className="stroke-muted/60" strokeWidth="10" />
+    <div className="relative flex items-center justify-center w-24 h-24 shrink-0">
+      <svg width="96" height="96" className="-rotate-90 absolute inset-0">
+        <circle cx="48" cy="48" r={r} fill="none" className="stroke-muted/50" strokeWidth="5" />
         <circle
-          cx="64"
-          cy="64"
+          cx="48"
+          cy="48"
           r={r}
           fill="none"
           className={ringStroke(score)}
-          strokeWidth="10"
+          strokeWidth="5"
           strokeDasharray={circ}
           strokeDashoffset={offset}
           strokeLinecap="round"
           style={{ transition: "stroke-dashoffset 0.8s ease" }}
         />
       </svg>
-      <div className="flex flex-col items-center relative z-10">
-        <span className={`text-4xl font-bold tabular-nums leading-none ${scoreColor(score)}`}>{score}</span>
-        <span className="text-xs text-muted-foreground font-medium mt-1">/ 100</span>
+      <div className="flex flex-col items-center relative z-10 gap-0.5">
+        <span className={`text-2xl font-bold tabular-nums leading-none ${scoreColor(score)}`}>{score}</span>
+        <span className="text-[10px] text-muted-foreground font-medium">/ 100</span>
       </div>
     </div>
   );
@@ -67,20 +67,20 @@ const AXIS_LABELS: Record<keyof OptimizerResult["axes"], string> = {
 
 export function ScoreAxes({ axes }: ScoreAxesProps) {
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-2">
       {(Object.keys(AXIS_LABELS) as Array<keyof typeof AXIS_LABELS>).map((key) => {
         const val = axes[key] ?? 0;
         const { bar, text } = axisColor(val);
         return (
-          <div key={key} className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground w-28 shrink-0">{AXIS_LABELS[key]}</span>
-            <div className="flex-1 h-2.5 bg-muted/60 rounded-full overflow-hidden">
+          <div key={key} className="flex items-center gap-2.5">
+            <span className="text-xs text-muted-foreground w-24 shrink-0">{AXIS_LABELS[key]}</span>
+            <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-700 ${bar}`}
                 style={{ width: `${val}%` }}
               />
             </div>
-            <span className={`text-sm font-bold w-8 text-right tabular-nums ${text}`}>{val}</span>
+            <span className={`text-xs font-bold w-7 text-right tabular-nums ${text}`}>{val}</span>
           </div>
         );
       })}

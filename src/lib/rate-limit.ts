@@ -91,31 +91,54 @@ export function checkRateLimit(
 
 /**
  * Extract client IP from request headers.
- * Works with Vercel, Cloudflare, nginx, and direct connections.
+ *
+ * Priority order (most to least trustworthy):
+ *  1. cf-connecting-ip  — set by Cloudflare, cannot be spoofed behind CF
+ *  2. x-forwarded-for LAST value — the rightmost IP is appended by the last
+ *     trusted proxy (Vercel edge), not the client. The leftmost value is
+ *     client-controlled and must NOT be trusted.
+ *  3. x-real-ip
  */
 export function getClientIP(request: Request): string {
   const headers = new Headers(request.headers);
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip") ||
-    headers.get("cf-connecting-ip") ||
-    "unknown"
-  );
+
+  // Cloudflare sets this and it cannot be spoofed
+  const cfIP = headers.get("cf-connecting-ip")?.trim();
+  if (cfIP) return cfIP;
+
+  // Take the LAST (rightmost) value — added by the last trusted proxy
+  // The first value is user-controlled and trivially spoofable
+  const xForwardedFor = headers.get("x-forwarded-for");
+  if (xForwardedFor) {
+    const ips = xForwardedFor.split(",").map((s) => s.trim()).filter(Boolean);
+    const last = ips[ips.length - 1];
+    if (last) return last;
+  }
+
+  return headers.get("x-real-ip")?.trim() || "unknown";
 }
 
 /**
  * Shared identifier for anonymous action limits.
- * Falls back to user-agent when IP is unavailable to avoid collapsing everyone into one bucket.
+ * Combines IP + a hash of User-Agent to make cycling IPs harder and to
+ * give separate buckets to different tools calling from the same NAT.
+ *
+ * NOTE: This is an in-memory store — effective on single-instance deploys.
+ * For multi-region Vercel/serverless, replace with an Upstash Redis-backed
+ * limiter (@upstash/ratelimit) so limits persist across cold starts.
  */
 export function getAnonymousRateLimitKey(request: Request): string {
   const ip = getClientIP(request);
-  if (ip !== "unknown") {
-    return `anon:${ip}`;
-  }
-
   const headers = new Headers(request.headers);
-  const userAgent = headers.get("user-agent")?.trim() || "unknown-agent";
-  return `anon:${userAgent}`;
+  // Include a short UA fingerprint so different clients behind the same NAT
+  // get separate buckets AND to make it harder to rotate just the IP.
+  const ua = headers.get("user-agent")?.trim() || "no-ua";
+  const uaSlug = ua.slice(0, 64).replace(/\s+/g, "_");
+
+  if (ip !== "unknown") {
+    return `anon:${ip}:${uaSlug}`;
+  }
+  return `anon:${uaSlug}`;
 }
 
 // ── Pre-configured limits for auth routes ─────────────────────────────────

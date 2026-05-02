@@ -82,6 +82,7 @@ function buildFileItems(rawFiles: { path: string; content: string }[]): FileItem
 export default function NewSkillPage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [context, setContext] = useState("");
   const [tab, setTab] = useState<InputTab>("paste");
 
   // Paste tab
@@ -219,7 +220,7 @@ export default function NewSkillPage() {
       const res = await fetch("/api/skills", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), content: activeContent.trim() }),
+        body: JSON.stringify({ name: name.trim(), content: activeContent.trim(), context: context.trim() || undefined }),
       });
       const data = (await res.json()) as Record<string, unknown>;
       if (!res.ok) {
@@ -258,6 +259,25 @@ export default function NewSkillPage() {
             className="w-full h-10 rounded-md border bg-muted/40 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             disabled={loading}
             maxLength={120}
+          />
+        </div>
+
+        {/* Skill context */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium" htmlFor="skill-context">Skill context</label>
+            <span className={`text-xs ${context.length > 230 ? "text-amber-500" : "text-muted-foreground"}`}>
+              {context.length}/250
+            </span>
+          </div>
+          <textarea
+            id="skill-context"
+            value={context}
+            onChange={(e) => setContext(e.target.value.slice(0, 250))}
+            placeholder="Describe why this skill exists, what problem it solves, and its impact. e.g. Used in code review pipeline - reduces review time by 40% by catching common patterns before human review."
+            rows={2}
+            className="w-full rounded-md border bg-muted/40 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/60"
+            disabled={loading}
           />
         </div>
 

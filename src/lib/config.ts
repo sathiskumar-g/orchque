@@ -6,8 +6,8 @@
 
 export const PRODUCT = {
   name: "Orchque",
-  tagline: "Orchestrate your AI skills for security, cost, reliability, and production use.",
-  description: "Orchque analyzes, optimizes, and versions your AI skills — reducing token waste and improving output quality in one click.",
+  tagline: "Orchestrate your AI skills for security, task completion, and production reliability.",
+  description: "Orchque analyzes, optimizes, and versions your AI skills — detecting security vulnerabilities, reducing token waste, and ensuring task completion before your skill goes to production.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   domain: "orchque.com",
   supportEmail: "support@orchque.com",
@@ -29,19 +29,26 @@ export const PRODUCT = {
 
   pricing: {
     free: {
-      name: "Free",
+      name: "Starter",
       price: 0,
       actions: 10,
       /** Label for the action unit */
-      actionLabel: "credits",
+      actionLabel: "lifetime credits",
       features: [
-        "10 total actions / month",
-        "File upload, drag-drop + URL skill loading",
-        "Business context for targeted output",
-        "Token estimate + security flag detection",
-        "Download optimized skill (.md)",
+        "10 lifetime credits (optimize + generate combined)",
+        "3 saved skills — each with up to 3 versions",
+        "Security vulnerability detection",
+        "Token estimate + reduction tracking",
+        "Score analytics — all 4 axes (Clarity, Specificity, Completeness, Safety)",
+        "Export / download optimized skill (.md)",
+        "Context field for targeted optimization",
         "3 anonymous trial actions — no signup",
       ],
+      limits: {
+        skills: 3,
+        versionsPerSkill: 3,
+        credits: 10,
+      },
     },
     pro: {
       name: "Pro",
@@ -49,24 +56,32 @@ export const PRODUCT = {
       currency: "USD",
       /** Lemon Squeezy variant ID — fill in when wiring payments */
       variantId: "",
-      actions: 50,
-      actionLabel: "credits",
+      actions: null, // unlimited
+      actionLabel: "unlimited",
       features: [
-        "50 total actions / month",
+        "Unlimited optimizations & generations",
+        "Unlimited saved skills & versions",
         "Full version history + diff view",
+        "Bulk folder upload (SKILL.md + memory.md + log.md)",
+        "Export all skills as .zip",
+        "Security scanning with fix suggestions",
         "Token breakdown + reduction tracking",
-        "Memory file embedding (log.md + memory.md)",
-        "Own skill library — saved, versioned, searchable",
-        "Shareable skill links for team collaboration",
+        "Priority processing",
         "Priority support — 24h response",
         "Early access to new features",
+        "Everything in Starter",
       ],
+      limits: {
+        skills: null,
+        versionsPerSkill: null,
+        credits: null,
+      },
     },
   },
 
   hero: {
-    headline: "Orchestrate your AI skills. Secure, efficient, reliability.",
-    subhead: "Paste any existing Claude skill or agent prompt. Orchque detects token waste, security vulnerabilities, and missing constraints — then rewrites it to production standard in seconds.",
+    headline: "AI skills that are secure, complete, and production-ready.",
+    subhead: "Paste any Claude skill or agent prompt. Orchque detects security vulnerabilities, token waste, and incomplete task logic — then rewrites it to production standard in seconds.",
     cta: "Optimize Your Skill Free",
     ctaHref: "/auth/signup",
     secondaryCta: "See how it works",
@@ -75,14 +90,14 @@ export const PRODUCT = {
 
   features: [
     {
-      icon: "Zap",
-      title: "Instant Optimization",
-      description: "Upload any AI skill or prompt. Orchque finds token waste, duplicate instructions, and missing constraints — then fixes them automatically.",
-    },
-    {
       icon: "Shield",
       title: "Security Scanning",
-      description: "Detect injection vectors, over-permissive scope, and missing output boundaries before your skill goes to production.",
+      description: "Detect injection vectors, credential leaks, over-permissive scope, and missing output boundaries before your skill goes to production.",
+    },
+    {
+      icon: "CheckCircle",
+      title: "Task Completion",
+      description: "Orchque finds missing constraints, ambiguous steps, and incomplete output specs — ensuring your skill actually completes what it promises.",
     },
     {
       icon: "BarChart",
@@ -93,11 +108,17 @@ export const PRODUCT = {
 } as const;
 
 /**
- * Credit constants — determines how many credits users get per plan
- * and how many are consumed per action.
+ * Credit constants — Free users get 10 lifetime credits (not monthly).
+ * Credits are consumed by optimize and generate actions (1 credit each).
+ * Pro users have unlimited actions — credits do not apply.
  */
 export const CREDITS = {
-  FREE_MONTHLY: 10,
-  PRO_MONTHLY: 50,
+  /** Free tier: 10 lifetime credits total, never reset */
+  FREE_LIFETIME: 10,
+  /** Cost per optimize or generate action */
   COST_PER_ACTION: 1,
+  /** Free tier: max saved skills */
+  FREE_SKILLS_LIMIT: 3,
+  /** Free tier: max versions per skill */
+  FREE_VERSIONS_LIMIT: 3,
 } as const;

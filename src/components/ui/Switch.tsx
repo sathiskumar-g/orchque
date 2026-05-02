@@ -13,7 +13,8 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
       onCheckedChange?.(e.target.checked);
     };
     return (
-      <label className={`inline-flex items-center cursor-pointer gap-2 ${className}`}>
+      <label className={`relative inline-flex items-center cursor-pointer gap-2 ${className}`}>
+        {/* Hidden checkbox — the "peer" */}
         <input
           type="checkbox"
           className="peer sr-only"
@@ -21,14 +22,11 @@ export const Switch = React.forwardRef<HTMLInputElement, SwitchProps>(
           onChange={handleChange}
           {...props}
         />
-        <span
-          className="w-10 h-6 bg-muted rounded-full relative transition-colors duration-200 peer-checked:bg-primary border border-border/60"
-        >
-          <span
-            className="absolute left-1 top-1 w-4 h-4 bg-background rounded-full shadow transition-transform duration-200 peer-checked:translate-x-4"
-          />
-        </span>
-        {label && <span className="text-xs select-none">{label}</span>}
+        {/* Track — sibling of peer, so peer-checked works */}
+        <div className="w-10 h-6 rounded-full bg-muted peer-checked:bg-emerald-500 border border-border/60 transition-colors duration-200 shrink-0" />
+        {/* Knob — sibling of peer, positioned over the track */}
+        <div className="absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 peer-checked:translate-x-4 shrink-0" />
+        {label && <span className="text-xs select-none ml-1">{label}</span>}
       </label>
     );
   }

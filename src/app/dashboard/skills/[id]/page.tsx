@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getServerUser } from "@/lib/server-user";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { getUserPlan } from "@/lib/credits-service";
 import type { Skill, SkillVersion } from "@/types/skill";
 import { SkillDetailClient } from "./SkillDetailClient";
 
@@ -31,12 +32,15 @@ export default async function SkillDetailPage({ params }: PageProps) {
 
   const admin = createAdminClient();
 
-  const { data: skill, error } = await admin
-    .from("skills")
-    .select("id, user_id, name, created_at")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
+  const [{ data: skill, error }, plan] = await Promise.all([
+    admin
+      .from("skills")
+      .select("id, user_id, name, context, created_at")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single(),
+    getUserPlan(user.id),
+  ]);
 
   if (error || !skill) notFound();
 
@@ -53,6 +57,7 @@ export default async function SkillDetailPage({ params }: PageProps) {
     <SkillDetailClient
       skill={skill as Skill}
       versions={(versions ?? []) as SkillVersion[]}
+      plan={plan}
     />
   );
 }

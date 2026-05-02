@@ -104,9 +104,10 @@ export default function PricingSection() {
             </div>
             <div className="flex items-baseline gap-2 mt-2 mb-1">
               <span className="text-3xl font-bold">
-                ${PRODUCT.pricing.pro.price}
+                $7
                 <span className="text-base font-normal text-muted-foreground">/mo</span>
               </span>
+              <span className="text-sm text-muted-foreground line-through">$9/mo</span>
             </div>
             <p className="text-sm text-muted-foreground mb-6">
               50 credits/month — price locked forever for founding members

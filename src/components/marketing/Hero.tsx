@@ -8,6 +8,8 @@ import { SkillGenerator } from "@/components/skills/SkillGenerator";
 
 type HeroTab = "optimize" | "generate";
 
+const showGenerate = process.env.NEXT_PUBLIC_SHOW_GENERATE_SKILLS === "true";
+
 export default function Hero() {
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
   const [heroTab, setHeroTab] = useState<HeroTab>("optimize");
@@ -105,23 +107,25 @@ export default function Hero() {
               >
                 <Zap className="h-3.5 w-3.5" /> Optimize Skill
               </button>
-              <button
-                onClick={() => { if (!optimizerBusy) setHeroTab("generate"); }}
-                disabled={optimizerBusy}
-                title={optimizerBusy ? "Finish optimization before switching" : undefined}
-                className={`flex items-center gap-2 h-8 px-3 rounded-md text-xs transition-all ${
-                  heroTab === "generate"
-                    ? "bg-background text-foreground shadow-sm border border-border/50 font-medium"
-                    : optimizerBusy
-                    ? "text-muted-foreground/30 cursor-not-allowed"
-                    : "text-muted-foreground/60 hover:text-muted-foreground"
-                }`}
-              >
-                <Sparkles className="h-3 w-3" /> Generate new
-              </button>
+              {showGenerate && (
+                <button
+                  onClick={() => { if (!optimizerBusy) setHeroTab("generate"); }}
+                  disabled={optimizerBusy}
+                  title={optimizerBusy ? "Finish optimization before switching" : undefined}
+                  className={`flex items-center gap-2 h-8 px-3 rounded-md text-xs transition-all ${
+                    heroTab === "generate"
+                      ? "bg-background text-foreground shadow-sm border border-border/50 font-medium"
+                      : optimizerBusy
+                      ? "text-muted-foreground/30 cursor-not-allowed"
+                      : "text-muted-foreground/60 hover:text-muted-foreground"
+                  }`}
+                >
+                  <Sparkles className="h-3 w-3" /> Generate new
+                </button>
+              )}
             </div>
             <div className="p-6 md:p-8">
-              {heroTab === "optimize" ? (
+              {heroTab === "optimize" || !showGenerate ? (
                 <OptimizerWidget mode="anonymous" onBusy={setOptimizerBusy} />
               ) : (
                 <SkillGenerator mode="anonymous" />

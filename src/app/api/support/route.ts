@@ -1,6 +1,6 @@
 import { createServerClient } from "@/lib/supabase-server";
 import { createAdminClient } from "@/lib/supabase-admin";
-import { sendEmail, getSupportTicketEmail } from "@/lib/email";
+import { sendEmail, getSupportTicketEmail, getSupportTicketConfirmationEmail } from "@/lib/email";
 import { checkRateLimit, getClientIP } from "@/lib/rate-limit";
 import { NextResponse } from "next/server";
 import { PRODUCT } from "@/lib/config";
@@ -79,13 +79,20 @@ export async function POST(request: Request) {
       is_staff: false,
     });
 
-    // Notify support team
+    // Notify support team + confirm to user (fire-and-forget)
     const supportEmail = process.env.SUPPORT_EMAIL || PRODUCT.supportEmail;
-    sendEmail({
-      to: supportEmail,
-      subject: `[TICKET] ${subject}`,
-      html: getSupportTicketEmail(user.email!, subject, message, ticket.id),
-    }).catch(() => {});
+    Promise.allSettled([
+      sendEmail({
+        to: supportEmail,
+        subject: `[TICKET] ${subject}`,
+        html: getSupportTicketEmail(user.email!, subject, message, ticket.id),
+      }),
+      sendEmail({
+        to: user.email!,
+        subject: `Support Ticket Received — #${ticket.id.slice(0, 8).toUpperCase()}`,
+        html: getSupportTicketConfirmationEmail(subject, ticket.id),
+      }),
+    ]);
 
     return NextResponse.json({ ticket: { id: ticket.id } }, { status: 201 });
   } catch (err: unknown) {

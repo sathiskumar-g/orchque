@@ -62,7 +62,7 @@ export async function ensureCreditRow(userId: string): Promise<void> {
     {
       user_id: userId,
       plan: "free",
-      monthly_credits: CREDITS.FREE_MONTHLY,
+      monthly_credits: CREDITS.FREE_LIFETIME,
       bonus_credits: 0,
     },
     { onConflict: "user_id", ignoreDuplicates: true }
@@ -127,4 +127,58 @@ export async function refundCredits(
     p_user_id: userId,
     p_amount: amount,
   });
+}
+
+/**
+ * Get a user's plan ("free" | "pro").
+ * Returns "free" if no row exists.
+ */
+export async function getUserPlan(userId: string): Promise<"free" | "pro"> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("user_credits")
+    .select("plan")
+    .eq("user_id", userId)
+    .single();
+  return (data?.plan as "free" | "pro") ?? "free";
+}
+
+/**
+ * Check whether a free user is within their skill/version limits.
+ * Pro users always pass. Returns null if allowed, or an error message string.
+ */
+export async function checkSkillLimit(userId: string): Promise<string | null> {
+  const plan = await getUserPlan(userId);
+  if (plan === "pro") return null;
+
+  const admin = createAdminClient();
+  const { count } = await admin
+    .from("skills")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if ((count ?? 0) >= CREDITS.FREE_SKILLS_LIMIT) {
+    return `Free plan allows up to ${CREDITS.FREE_SKILLS_LIMIT} saved skills. Upgrade to Pro for unlimited skills.`;
+  }
+  return null;
+}
+
+/**
+ * Check whether a free user is within their versions-per-skill limit.
+ * Pro users always pass. Returns null if allowed, or an error message string.
+ */
+export async function checkVersionLimit(userId: string, skillId: string): Promise<string | null> {
+  const plan = await getUserPlan(userId);
+  if (plan === "pro") return null;
+
+  const admin = createAdminClient();
+  const { count } = await admin
+    .from("skill_versions")
+    .select("id", { count: "exact", head: true })
+    .eq("skill_id", skillId);
+
+  if ((count ?? 0) >= CREDITS.FREE_VERSIONS_LIMIT) {
+    return `Free plan allows up to ${CREDITS.FREE_VERSIONS_LIMIT} versions per skill. Upgrade to Pro for unlimited versions.`;
+  }
+  return null;
 }

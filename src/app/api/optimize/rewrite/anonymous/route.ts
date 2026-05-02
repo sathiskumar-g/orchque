@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, getAnonymousRateLimitKey } from "@/lib/rate-limit";
 import { rewriteSkill, ClaudeParseError } from "@/lib/claude";
 import { validateSkillContent } from "@/lib/skill-optimizer-prompt";
 import {
@@ -8,13 +9,40 @@ import {
   validateRequestOrigin,
 } from "@/lib/security-guards";
 
-// Rewrite endpoint: no credit deduction for anonymous (credit already consumed at score step).
-// No rate limit check needed here — the score endpoint already gated this session.
+// Rewrite shares the same 3-action/24h budget as score/anonymous.
+// This MUST be enforced here too — callers can hit this endpoint directly
+// without going through the score step, so we cannot rely on score gating.
+const ANON_REWRITE_LIMIT = { maxRequests: 3, windowMs: 24 * 60 * 60 * 1000 };
+// Burst limit: max 2 per minute
+const ANON_BURST_LIMIT = { maxRequests: 2, windowMs: 60 * 1000 };
+
 export async function POST(request: Request): Promise<NextResponse> {
   try {
     const originError = validateRequestOrigin(request);
     if (originError) {
       return NextResponse.json({ error: originError }, { status: 403 });
+    }
+
+    const limitKey = getAnonymousRateLimitKey(request);
+
+    const burst = checkRateLimit(`burst:${limitKey}`, ANON_BURST_LIMIT);
+    if (!burst.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down.", code: "rate_limited", retryAfterSeconds: burst.retryAfterSeconds },
+        { status: 429 }
+      );
+    }
+
+    const rl = checkRateLimit(limitKey, ANON_REWRITE_LIMIT);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        {
+          error: "You've used all 3 free anonymous actions. Sign up to get 10 monthly credits.",
+          code: "trial_used",
+          retryAfterSeconds: rl.retryAfterSeconds,
+        },
+        { status: 429 }
+      );
     }
 
     let body: unknown;

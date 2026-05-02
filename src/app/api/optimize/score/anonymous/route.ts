@@ -10,8 +10,10 @@ import {
 } from "@/lib/security-guards";
 import type { ScoreResult } from "@/types/skill";
 
-// 3 total anonymous actions shared with /api/optimize/anonymous and /api/generate/anonymous
+// 3 total anonymous actions per 24 hours shared with /api/optimize/anonymous and /api/generate/anonymous
 const ANON_LIMIT = { maxRequests: 3, windowMs: 24 * 60 * 60 * 1000 };
+// Burst limit: max 2 requests per minute per IP to prevent rapid concurrent hammering
+const ANON_BURST_LIMIT = { maxRequests: 2, windowMs: 60 * 1000 };
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -20,7 +22,18 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: originError }, { status: 403 });
     }
 
-    const rl = checkRateLimit(getAnonymousRateLimitKey(request), ANON_LIMIT);
+    const limitKey = getAnonymousRateLimitKey(request);
+
+    // Check burst limit first (per-minute)
+    const burst = checkRateLimit(`burst:${limitKey}`, ANON_BURST_LIMIT);
+    if (!burst.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down.", code: "rate_limited", retryAfterSeconds: burst.retryAfterSeconds },
+        { status: 429 }
+      );
+    }
+
+    const rl = checkRateLimit(limitKey, ANON_LIMIT);
     if (!rl.allowed) {
       return NextResponse.json(
         {
