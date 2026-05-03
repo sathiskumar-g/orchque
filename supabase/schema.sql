@@ -49,6 +49,9 @@ ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS context text CHECK (context I
 -- Add source column if upgrading existing schema
 ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS source text CHECK (source IS NULL OR source IN ('optimized', 'generated'));
 
+-- Add is_package flag for Pro skill packages
+ALTER TABLE public.skills ADD COLUMN IF NOT EXISTS is_package boolean NOT NULL DEFAULT false;
+
 CREATE INDEX IF NOT EXISTS skills_user_id_idx ON public.skills (user_id, created_at DESC);
 
 ALTER TABLE public.skills ENABLE ROW LEVEL SECURITY;
@@ -75,6 +78,9 @@ CREATE TABLE IF NOT EXISTS public.skill_versions (
   is_active            boolean     NOT NULL DEFAULT false,
   created_at           timestamptz NOT NULL DEFAULT now()
 );
+
+-- Add package_files column for Pro multi-file packages
+ALTER TABLE public.skill_versions ADD COLUMN IF NOT EXISTS package_files jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS skill_versions_skill_id_idx ON public.skill_versions (skill_id, created_at DESC);
 
@@ -106,7 +112,7 @@ CREATE TABLE IF NOT EXISTS public.support_tickets (
   user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   subject     text        NOT NULL CHECK (char_length(subject) BETWEEN 1 AND 200),
   status      text        NOT NULL DEFAULT 'open'
-                CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')),
+                CHECK (status IN ('open', 'in_progress', 'resolved', 'closed', 'not_resolved')),
   priority    text        NOT NULL DEFAULT 'normal'
                 CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   created_at  timestamptz NOT NULL DEFAULT now(),
@@ -134,8 +140,12 @@ CREATE TABLE IF NOT EXISTS public.support_messages (
   user_id     uuid        REFERENCES auth.users(id) ON DELETE SET NULL,
   body        text        NOT NULL CHECK (char_length(body) BETWEEN 1 AND 5000),
   is_staff    boolean     NOT NULL DEFAULT false,
+  attachments text[]      NOT NULL DEFAULT '{}',
   created_at  timestamptz NOT NULL DEFAULT now()
 );
+
+-- Add attachments column if upgrading from older schema
+ALTER TABLE public.support_messages ADD COLUMN IF NOT EXISTS attachments text[] NOT NULL DEFAULT '{}';
 
 CREATE INDEX IF NOT EXISTS support_messages_ticket_id_idx ON public.support_messages (ticket_id, created_at ASC);
 
@@ -163,6 +173,31 @@ CREATE POLICY "support_messages: owner insert"
         AND t.user_id = auth.uid()
     )
   );
+
+-- ── Pricing inquiries (Pro waitlist + Enterprise enquiries) ───────────────────
+
+CREATE TABLE IF NOT EXISTS public.pricing_inquiries (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  type             text NOT NULL CHECK (type IN ('pro', 'enterprise')),
+  name             text,
+  email            text NOT NULL,
+  issues           text,
+  expected_features text,
+  team_size        text,   -- kept for backward compatibility; new rows won't populate this
+  company_name     text,
+  timeline         text,
+  skill_needs      text,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+
+-- Only service-role (admin) can read/write this table — no RLS needed for anonymous inserts
+-- via the API route which uses the admin client.
+ALTER TABLE public.pricing_inquiries DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pricing_inquiries ADD COLUMN IF NOT EXISTS company_name text;
+ALTER TABLE public.pricing_inquiries ADD COLUMN IF NOT EXISTS timeline text;
+ALTER TABLE public.pricing_inquiries ADD COLUMN IF NOT EXISTS skill_needs text;
+ALTER TABLE public.pricing_inquiries ALTER COLUMN issues DROP NOT NULL;
+ALTER TABLE public.pricing_inquiries ALTER COLUMN expected_features DROP NOT NULL;
 
 -- ── SQL Functions ─────────────────────────────────────────────────────────────
 

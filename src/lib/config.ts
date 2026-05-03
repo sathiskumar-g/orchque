@@ -56,10 +56,10 @@ export const PRODUCT = {
       currency: "USD",
       /** Lemon Squeezy variant ID — fill in when wiring payments */
       variantId: "",
-      actions: null, // unlimited
-      actionLabel: "unlimited",
+      actions: 50,
+      actionLabel: "50 credits/mo",
       features: [
-        "Unlimited optimizations & generations",
+        "50 credits per month (resets monthly)",
         "Unlimited saved skills & versions",
         "Full version history + diff view",
         "Bulk folder upload (SKILL.md + memory.md + log.md)",
@@ -74,7 +74,7 @@ export const PRODUCT = {
       limits: {
         skills: null,
         versionsPerSkill: null,
-        credits: null,
+        credits: 50,
       },
     },
   },
@@ -115,6 +115,8 @@ export const PRODUCT = {
 export const CREDITS = {
   /** Free tier: 10 lifetime credits total, never reset */
   FREE_LIFETIME: 10,
+  /** Pro tier: 100 credits per month, resets monthly */
+  PRO_MONTHLY: 50,
   /** Cost per optimize or generate action */
   COST_PER_ACTION: 1,
   /** Free tier: max saved skills */

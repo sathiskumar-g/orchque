@@ -59,7 +59,7 @@ export default async function DashboardPage() {
     : "red";
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
         <CreditChip />
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="flex flex-wrap justify-center gap-4 mb-8">
         <StatsCard
           label="Plan"
           value={plan === "pro" ? "Pro" : "Free"}

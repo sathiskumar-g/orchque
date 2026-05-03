@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CreditChip from "@/components/dashboard/CreditChip";
 import { OptimizerWidget } from "@/components/skills/OptimizerWidget";
 import { SkillGenerator } from "@/components/skills/SkillGenerator";
@@ -15,6 +15,14 @@ export default function ProductPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [saveToSkills, setSaveToSkills] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [plan, setPlan] = useState<"free" | "pro">("free");
+
+  useEffect(() => {
+    fetch("/api/user/profile")
+      .then((r) => r.json())
+      .then((d) => { if (d.plan === "pro") setPlan("pro"); })
+      .catch(() => {});
+  }, []);
 
   function handleOptimizeResult(_result: OptimizerResult) {
     setRefreshKey((k) => k + 1);
@@ -97,6 +105,7 @@ export default function ProductPage() {
         ) : (
           <SkillGenerator
             mode="skill"
+            plan={plan}
             saveToSkills={saveToSkills}
             onResult={handleGenerateResult}
             onSaveStatus={setSaveStatus}

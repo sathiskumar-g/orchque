@@ -26,7 +26,7 @@ export async function POST(
       return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const { content, score, token_estimate, token_reduction_pct, security_flags, improvements, axes } =
+    const { content, score, token_estimate, token_reduction_pct, security_flags, improvements, axes, package_files } =
       (body ?? {}) as Record<string, unknown>;
 
     if (typeof content !== "string" || !content.trim()) {
@@ -57,6 +57,7 @@ export async function POST(
         skill_id: id,
         version: nextVersion,
         content: content.trim(),
+        package_files: Array.isArray(package_files) ? package_files : [],
         score: typeof score === "number" ? score : null,
         token_estimate: typeof token_estimate === "number" ? token_estimate : null,
         token_reduction_pct: typeof token_reduction_pct === "number" ? token_reduction_pct : null,
@@ -112,7 +113,7 @@ export async function GET(
     const { data: versions, error: versionsError } = await admin
       .from("skill_versions")
       .select(
-        "id, skill_id, version, content, score, token_estimate, token_reduction_pct, security_flags, improvements, axes, is_active, created_at"
+        "id, skill_id, version, content, package_files, score, token_estimate, token_reduction_pct, security_flags, improvements, axes, is_active, created_at"
       )
       .eq("skill_id", id)
       .order("created_at", { ascending: false })

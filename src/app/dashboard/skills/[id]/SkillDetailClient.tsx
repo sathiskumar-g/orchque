@@ -7,6 +7,7 @@ import { ScoreRing, ScoreAxes, SecurityFlagList, ImprovementList, VersionBadge, 
 import { SkillDiff } from "@/components/skills/SkillDiff";
 import { Download, GitCompare, Loader2, Pencil, Check, X, ChevronDown, ChevronUp, Sparkles, ArrowLeft } from "lucide-react";
 import { CopyButton } from "@/components/ui/CopyButton";
+import { SkillPackageViewer } from "@/components/skills/SkillPackageViewer";
 
 const RUNNING_ANIMALS = ["🐎", "🦌", "🐕", "🐇", "🦘", "🐆"];
 
@@ -353,14 +354,17 @@ export function SkillDetailClient({ skill, versions: initialVersions, plan }: Sk
           <button onClick={() => setOptimizeError(null)} className="ml-2 text-destructive/60 hover:text-destructive"><X className="h-4 w-4" /></button>
         </div>
       )}
-      {/* â”€â”€ Original content + analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Original content + analytics ─────────────────────────────────────── */}
       <div className="rounded-lg border bg-card p-5 space-y-5">
         <div className="flex items-center gap-2 flex-wrap">
           <h2 className="text-sm font-semibold">Content</h2>
           <VersionBadge version={selected?.version ?? ""} active={selected?.is_active} />
           {selected?.token_estimate != null && <TokenEstimate tokens={selected.token_estimate} />}
+          {skill.is_package && (
+            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Package</span>
+          )}
           <div className="ml-auto flex items-center gap-2">
-            {!editingContent && (
+            {!skill.is_package && !editingContent && (
               <>
                 <CopyButton text={selected?.content ?? ""} />
                 <button
@@ -405,7 +409,14 @@ export function SkillDetailClient({ skill, versions: initialVersions, plan }: Sk
           </div>
         )}
 
-        {editingContent ? (
+        {/* Package viewer or single-file editor */}
+        {skill.is_package && selected?.package_files && selected.package_files.length > 0 ? (
+          <SkillPackageViewer
+            files={selected.package_files}
+            skillId={skill.id}
+            onSaved={() => window.location.reload()}
+          />
+        ) : editingContent ? (
           <div className="space-y-2">
             <textarea
               value={contentDraft}

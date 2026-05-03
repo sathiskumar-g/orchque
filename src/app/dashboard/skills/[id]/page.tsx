@@ -35,7 +35,7 @@ export default async function SkillDetailPage({ params }: PageProps) {
   const [{ data: skill, error }, plan] = await Promise.all([
     admin
       .from("skills")
-      .select("id, user_id, name, context, created_at")
+      .select("id, user_id, name, context, source, is_package, created_at")
       .eq("id", id)
       .eq("user_id", user.id)
       .single(),
@@ -47,7 +47,7 @@ export default async function SkillDetailPage({ params }: PageProps) {
   const { data: versions } = await admin
     .from("skill_versions")
     .select(
-      "id, skill_id, version, content, score, token_estimate, token_reduction_pct, security_flags, improvements, axes, is_active, created_at"
+      "id, skill_id, version, content, package_files, score, token_estimate, token_reduction_pct, security_flags, improvements, axes, is_active, created_at"
     )
     .eq("skill_id", id)
     .order("created_at", { ascending: false })

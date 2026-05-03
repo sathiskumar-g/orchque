@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
 
-    const { name, content, context, source } = body as Record<string, unknown>;
+    const { name, content, context, source, is_package, package_files } = body as Record<string, unknown>;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json({ error: "name is required." }, { status: 400 });
@@ -76,11 +76,13 @@ export async function POST(request: Request): Promise<NextResponse> {
       : null;
 
     const sourceVal = source === 'optimized' || source === 'generated' ? source : null;
+    const isPackageVal = is_package === true;
+    const packageFilesVal = Array.isArray(package_files) ? package_files : [];
 
     // Insert skill
     const { data: skill, error: skillError } = await admin
       .from("skills")
-      .insert({ user_id: user.id, name: name.trim(), context: contextVal, source: sourceVal })
+      .insert({ user_id: user.id, name: name.trim(), context: contextVal, source: sourceVal, is_package: isPackageVal })
       .select()
       .single();
 
@@ -99,6 +101,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         skill_id: typedSkill.id,
         version: "v1.0",
         content: content.trim(),
+        package_files: packageFilesVal,
         token_estimate: tokenEstimate,
         is_active: true,
       })

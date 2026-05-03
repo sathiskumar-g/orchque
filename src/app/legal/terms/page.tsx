@@ -23,7 +23,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-xl font-semibold mb-2">3. Credits and billing</h2>
           <p className="text-muted-foreground">
-            Free (Starter) plan users receive 10 lifetime optimization credits at no charge. Credits do not reset and cannot be transferred. Pro plan users have unlimited credits for a flat monthly fee of $7/month.
+            Free (Starter) plan users receive 10 lifetime optimization credits at no charge. Credits do not reset and cannot be transferred. Pro plan users have unlimited credits for a flat monthly fee of $12/month.
             Pro subscriptions are billed monthly and are subject to our{" "}
             <Link href="/legal/refund" className="underline hover:text-foreground">Refund Policy</Link>.
           </p>

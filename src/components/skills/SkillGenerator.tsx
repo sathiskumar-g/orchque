@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Loader2, Sparkles, Download, ArrowRight, X } from "lucide-react";
+import { Loader2, Sparkles, Download, ArrowRight, X, Package, Lock } from "lucide-react";
 import Link from "next/link";
-import type { GeneratorResult } from "@/types/skill";
+import type { GeneratorResult, GeneratorPackageResult, SkillFile } from "@/types/skill";
 
 interface SkillGeneratorProps {
   mode: "anonymous" | "skill";
+  plan?: "free" | "pro";
   onResult?: (result: GeneratorResult) => void;
   saveToSkills?: boolean;
   onSaveStatus?: (status: "idle" | "saving" | "saved" | "error") => void;
@@ -29,11 +30,28 @@ function downloadMd(title: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStatus }: SkillGeneratorProps) {
+function downloadPackage(title: string, files: SkillFile[]) {
+  const slug = title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const combined = files
+    .map((f) => `${"=".repeat(60)}\n# ${f.path}\n${"=".repeat(60)}\n${f.content}`)
+    .join("\n\n");
+  const blob = new Blob([combined], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${slug || "skill"}-package.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function SkillGenerator({ mode, plan, onResult, saveToSkills = true, onSaveStatus }: SkillGeneratorProps) {
   const [description, setDescription] = useState("");
+  const [businessContext, setBusinessContext] = useState("");
+  const [packageMode, setPackageMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GeneratorResult | null>(null);
+  const [packageResult, setPackageResult] = useState<GeneratorPackageResult | null>(null);
   const [trialUsed, setTrialUsed] = useState(false);
   // internal save state (for result view status display)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -60,6 +78,8 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description,
+          businessContext: businessContext.trim() || undefined,
+          package: packageMode && mode !== "anonymous",
         }),
       });
 
@@ -73,13 +93,22 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
           setTrialUsed(true);
           return;
         }
+        if (res.status === 403 && (data.code as string) === "pro_required") {
+          setError("Skill packages are a Pro feature. Upgrade to unlock.");
+          return;
+        }
         setError((data.error as string) ?? "Something went wrong. Please try again.");
         return;
       }
 
-      const generatorResult = data as GeneratorResult;
-      setResult(generatorResult);
-      onResult?.(generatorResult);
+      if (data.isPackage) {
+        const pkgResult = data as unknown as GeneratorPackageResult & { isPackage: boolean };
+        setPackageResult(pkgResult);
+      } else {
+        const generatorResult = data as GeneratorResult;
+        setResult(generatorResult);
+        onResult?.(generatorResult);
+      }
     } catch {
       setError("Network error. Please check your connection and try again.");
     } finally {
@@ -89,6 +118,7 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
 
   function handleReset() {
     setResult(null);
+    setPackageResult(null);
     setTrialUsed(false);
     setError(null);
     setSaveStatus("idle");
@@ -99,7 +129,8 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
   // ── Result view ───────────────────────────────────────────────────────────────
   // Save generated skill if toggle is ON and not already saved
   async function handleSaveSkill() {
-    if (!result || saveStatus === "saving" || mode === "anonymous") return;
+    if (saveStatus === "saving" || mode === "anonymous") return;
+    if (!result && !packageResult) return;
     setSaveStatus("saving");
     onSaveStatus?.("saving");
     setSaveError(null);
@@ -107,10 +138,21 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
       const now = new Date();
       const pad = (n: number) => n.toString().padStart(2, "0");
       const autoName = `untitled-${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+
+      const body = packageResult
+        ? {
+            name: autoName,
+            content: packageResult.files.find((f) => f.path === "SKILL.md")?.content ?? "",
+            source: "generated",
+            is_package: true,
+            package_files: packageResult.files,
+          }
+        : { name: autoName, content: result!.content, source: "generated" };
+
       const res = await fetch("/api/skills", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: autoName, content: result.content, source: "generated" }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -130,11 +172,68 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
 
   // Auto-save on generation if toggle is ON and not anonymous
   React.useEffect(() => {
-    if (result && saveToSkills && mode === "skill" && saveStatus === "idle") {
+    if ((result || packageResult) && saveToSkills && mode === "skill" && saveStatus === "idle") {
       handleSaveSkill();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, saveToSkills, mode]);
+  }, [result, packageResult, saveToSkills, mode]);
+
+  if (packageResult) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <Package className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-sm">{packageResult.title}</span>
+              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">Package</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{packageResult.description}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-muted-foreground">~{packageResult.token_estimate} tokens</span>
+            <button
+              onClick={() => downloadPackage(packageResult.title, packageResult.files)}
+              className="h-8 px-3 rounded-md bg-primary/10 border border-primary/25 text-primary text-xs font-medium flex items-center gap-1.5 hover:bg-primary/20 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Download
+            </button>
+          </div>
+        </div>
+
+        {/* File list */}
+        <div className="rounded-lg border border-border/60 bg-muted/30 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/40 bg-muted/40">
+            <span className="text-xs font-semibold text-muted-foreground">{packageResult.files.length} files</span>
+          </div>
+          <ul className="divide-y divide-border/40">
+            {packageResult.files.map((f) => (
+              <li key={f.path} className="flex items-center justify-between px-3 py-2 text-xs">
+                <span className="font-mono text-foreground/80">{f.path}</span>
+                <span className="text-muted-foreground">{Math.ceil(f.content.length / 4)} tokens</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Save status */}
+        {mode === "skill" && saveStatus !== "idle" && (
+          <div className="flex items-center gap-2 text-xs">
+            {saveStatus === "saving" && <span className="text-muted-foreground animate-pulse">Saving to skills…</span>}
+            {saveStatus === "saved" && <span className="text-emerald-500">✓ Saved to skills</span>}
+            {saveStatus === "error" && <span className="text-destructive">{saveError ?? "Failed to save"}</span>}
+          </div>
+        )}
+
+        <button
+          onClick={handleReset}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+        >
+          <X className="h-3 w-3" /> Generate another
+        </button>
+      </div>
+    );
+  }
 
   if (result) {
     return (
@@ -271,6 +370,54 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
         </div>
       </div>
 
+      {/* Business context (optional) */}
+      {mode === "skill" && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Business context <span className="normal-case text-muted-foreground/60">(optional)</span>
+          </label>
+          <textarea
+            value={businessContext}
+            onChange={(e) => setBusinessContext(e.target.value)}
+            placeholder="Add company or domain context — e.g. 'SaaS product for healthcare teams, HIPAA compliant, uses React + Node'"
+            className="w-full min-h-20 rounded-lg border border-border/60 bg-muted/40 px-4 py-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/60"
+            disabled={loading}
+            maxLength={1000}
+          />
+        </div>
+      )}
+
+      {/* Package mode toggle (Pro only) */}
+      {mode === "skill" && (
+        <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium">Skill Package</p>
+              <p className="text-xs text-muted-foreground">Generate multi-file package (SKILL.md + references, memory, logs, scripts)</p>
+            </div>
+          </div>
+          {plan === "pro" ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={packageMode}
+              onClick={() => setPackageMode((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none ${packageMode ? "bg-primary" : "bg-muted-foreground/30"}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${packageMode ? "translate-x-5" : "translate-x-0"}`}
+              />
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Lock className="h-3.5 w-3.5" />
+              <Link href="/pricing" className="text-primary hover:underline">Pro</Link>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Business context toggle */}
       {/* Removed - no longer part of generation flow */}
 
@@ -288,9 +435,11 @@ export function SkillGenerator({ mode, onResult, saveToSkills = true, onSaveStat
         className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Generating skill…</>
+          <><Loader2 className="h-4 w-4 animate-spin" /> {packageMode ? "Generating package…" : "Generating skill…"}</>
         ) : mode === "anonymous" ? (
           <><Sparkles className="h-4 w-4" /> Generate Free Skill</>
+        ) : packageMode ? (
+          <><Package className="h-4 w-4" /> Generate Skill Package</>
         ) : (
           <><Sparkles className="h-4 w-4" /> Generate Skill</>
         )}

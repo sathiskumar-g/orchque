@@ -107,13 +107,22 @@ export function getSupportTicketEmail(
   userEmail: string,
   subject: string,
   message: string,
-  ticketId: string
+  ticketId: string,
+  attachments: string[] = []
 ) {
+  const attachmentHtml = attachments.length
+    ? `<div style="margin-top:12px;"><strong>Attachments:</strong><ul style="margin:6px 0 0 0;padding-left:16px;">${
+        attachments.map((url) => {
+          const name = url.split("/").pop()?.replace(/^\d+_/, "") ?? url;
+          return `<li><a href="${url}" style="color:#6366f1;">${name}</a></li>`;
+        }).join("")
+      }</ul></div>`
+    : "";
   const body = `
     <div class="type-badge">Support Ticket</div>
     ${infoBox("From", userEmail)}
     ${infoBox("Subject", subject)}
-    ${infoBox("Message", message)}
+    ${infoBox("Message", message + attachmentHtml)}
     ${infoBox("Ticket ID", ticketId)}
     ${infoBox("Submitted at", new Date().toLocaleString())}
     <div class="action-box">⚡ <strong>Action required:</strong> Respond within 24 hours.</div>

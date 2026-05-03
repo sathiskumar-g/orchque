@@ -14,13 +14,28 @@ interface SkillCardProps {
   skill: SkillWithLatest;
 }
 
-// 50 famous animal/bird/sea emojis — skips weird/obscure ones
+// Animal & bird emojis — no insects
 const EMOJIS = [
-  "🦁","🐯","🐻","🐼","🦊","🐺","🐘","🦒","🦓","🦏",
-  "🐆","🦬","🐪","🦙","🐅","🦅","🦆","🦉","🦚","🦜",
-  "🦩","🦢","🕊️","🐧","🦃","🐬","🐳","🐋","🦈","🐙",
-  "🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐢","🐸","🐒",
-  "🦍","🐇","🐈","🐕","🦮","🐝","🦋","🐄","🐖","🐑",
+  // Big Cats & Bears
+  "🦁","🐯","🐅","🐆","🐻","🐼","🐨","🦝",
+  // Dogs, Wolves & Foxes
+  "🐺","🦊","🐕","🦮","🐩",
+  // Primates
+  "🐒","🦍","🦧",
+  // Elephants, Rhinos & Large Mammals
+  "🐘","🦣","🦛","🦏","🦒","🦬","🐃","🐂",
+  // Horses, Deer & Hooved
+  "🐴","🦄","🦌","🐐","🐪","🦘","🐓",
+  // Reptiles
+  "🦖","🦕",
+  // Others
+  "🐈","🐎",
+  // Small Mammals
+  "🐇","🐿️","🦔","🦦","🦥","🦨","🦫",
+  // Ocean & Sea
+  "🐬","🐳","🐋","🦈","🐙","🦑","🦀","🐠",
+  // Birds
+  "🦅","🦉","🦇","🐧","🕊️","🦤","🦚","🦜","🐦","🐓",
 ];
 
 const COLORS = [
@@ -75,7 +90,8 @@ export function SkillCard({ skill }: SkillCardProps) {
   return (
     <Link
       href={`/dashboard/skills/${skill.id}`}
-      className={`group relative block rounded-2xl border ${palette.border} ${palette.bg} aspect-square flex flex-col hover:border-primary/40 transition-colors shadow-sm`}
+      className={`group relative block rounded-2xl border ${palette.border} ${palette.bg} flex flex-col hover:border-primary/40 transition-colors shadow-sm`}
+      style={{ width: 212, height: 212 }}
     >
       {/* Share button — top-right corner */}
       <button
@@ -99,7 +115,10 @@ export function SkillCard({ skill }: SkillCardProps) {
 
       {/* Emoji area — top ~55% */}
       <div className="flex-1 flex items-center justify-center">
-        <span className="text-5xl select-none leading-none" role="img">{palette.emoji}</span>
+        <span
+          className="text-5xl select-none leading-none"
+          role="img"
+        >{palette.emoji}</span>
       </div>
 
       {/* Divider */}

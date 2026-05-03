@@ -4,6 +4,7 @@ import { getServerUser } from "@/lib/server-user";
 import { createAdminClient } from "@/lib/supabase-admin";
 import EmptyState from "@/components/dashboard/EmptyState";
 import { SkillCard } from "@/components/skills/SkillCard";
+import CreditChip from "@/components/dashboard/CreditChip";
 import type { Skill, SkillVersion } from "@/types/skill";
 
 export const metadata = { title: "Skills — Orchque" };
@@ -42,7 +43,7 @@ export default async function SkillsPage() {
   });
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Skills</h1>
@@ -52,13 +53,16 @@ export default async function SkillsPage() {
               : `${skills.length} skill${skills.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link
+        <div className="flex items-center gap-3">
+          <CreditChip />
+          <Link
           href="/dashboard/skills/new"
           className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
           New Skill
         </Link>
+        </div>
       </div>
 
       {skills.length === 0 ? (
@@ -70,7 +74,7 @@ export default async function SkillsPage() {
           actionHref="/dashboard/skills/new"
         />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex flex-wrap gap-4">
           {skills.map((skill) => (
             <SkillCard key={skill.id} skill={skill} />
           ))}

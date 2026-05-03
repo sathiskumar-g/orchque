@@ -286,10 +286,10 @@ function SubscriptionSection() {
 
 function LegalSection() {
   const links = [
-    { label: "Privacy Policy",       desc: "How we handle your data.",              href: "/legal/privacy-policy" },
-    { label: "Terms of Service",     desc: "Rules and conditions of use.",           href: "/legal/terms-of-service" },
-    { label: "Acceptable Use",       desc: "What you can and can't do.",             href: "/legal/acceptable-use" },
-    { label: "Refund Policy",        desc: "Refund eligibility and how to request.", href: "/legal/refund-policy" },
+    { label: "Privacy Policy",   desc: "How we handle your data.",              href: "/legal/privacy" },
+    { label: "Terms of Service", desc: "Rules and conditions of use.",           href: "/legal/terms" },
+    { label: "Refund Policy",    desc: "Refund eligibility and how to request.", href: "/legal/refund" },
+    { label: "Contact Us",       desc: "Get in touch with support.",             href: "/contact" },
   ];
   return (
     <div>

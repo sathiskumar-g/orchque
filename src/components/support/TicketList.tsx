@@ -8,10 +8,12 @@ interface Ticket {
   created_at: string;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  open: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  closed: "bg-muted text-muted-foreground",
+const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  open:         { label: "Open",         className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  in_progress:  { label: "In progress",  className: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  resolved:     { label: "Done",         className: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+  not_resolved: { label: "Not resolved", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+  closed:       { label: "Closed",       className: "bg-muted text-muted-foreground" },
 };
 
 export default function TicketList({ tickets }: { tickets: Ticket[] }) {
@@ -39,10 +41,10 @@ export default function TicketList({ tickets }: { tickets: Ticket[] }) {
           </div>
           <span
             className={`ml-4 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-              STATUS_STYLES[ticket.status] ?? STATUS_STYLES.open
+              (STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.open).className
             }`}
           >
-            {ticket.status}
+            {(STATUS_CONFIG[ticket.status] ?? STATUS_CONFIG.open).label}
           </span>
         </Link>
       ))}

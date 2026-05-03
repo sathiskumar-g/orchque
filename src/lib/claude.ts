@@ -2,13 +2,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   SKILL_OPTIMIZER_SYSTEM_PROMPT,
   SKILL_GENERATOR_SYSTEM_PROMPT,
+  SKILL_PACKAGE_GENERATOR_SYSTEM_PROMPT,
   SCORE_ONLY_SYSTEM_PROMPT,
   REWRITE_SYSTEM_PROMPT,
   MODEL,
+  MODEL_FAST,
   MAX_INPUT_CHARS,
 } from "@/lib/skill-optimizer-prompt";
 import { sanitizeModelOutputContent } from "@/lib/security-guards";
-import type { OptimizerResult, GeneratorResult, ScoreResult } from "@/types/skill";
+import type { OptimizerResult, GeneratorResult, ScoreResult, GeneratorPackageResult, SkillFile } from "@/types/skill";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -73,7 +75,7 @@ export async function scoreSkill(content: string, businessContext?: string): Pro
     : content;
 
   const message = await client.messages.create({
-    model: MODEL,
+    model: MODEL_FAST,
     max_tokens: 1024, // score JSON is small — hard cap to prevent runaway output
     system: SCORE_ONLY_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
@@ -194,7 +196,7 @@ export async function generateSkill(description: string, businessContext?: strin
     : `Skill to generate: ${description.trim()}`;
 
   const message = await client.messages.create({
-    model: MODEL,
+    model: MODEL_FAST,
     max_tokens: 4096,
     system: SKILL_GENERATOR_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
@@ -218,6 +220,69 @@ export async function generateSkill(description: string, businessContext?: strin
   }
 
   parsed.content = sanitizeOutputOrThrow(parsed.content);
+
+  return parsed;
+}
+
+function isSkillFile(val: unknown): val is SkillFile {
+  if (typeof val !== "object" || val === null) return false;
+  const v = val as Record<string, unknown>;
+  return typeof v.path === "string" && typeof v.content === "string";
+}
+
+function isGeneratorPackageResult(val: unknown): val is GeneratorPackageResult {
+  if (typeof val !== "object" || val === null) return false;
+  const v = val as Record<string, unknown>;
+  return (
+    typeof v.title === "string" &&
+    typeof v.description === "string" &&
+    typeof v.token_estimate === "number" &&
+    Array.isArray(v.files) &&
+    (v.files as unknown[]).every(isSkillFile)
+  );
+}
+
+/**
+ * Call Claude to generate a full skill package (Pro users).
+ * Returns SKILL.md + references/, memory/, logs/, scripts/ as a file array.
+ */
+export async function generateSkillPackage(
+  description: string,
+  businessContext?: string
+): Promise<GeneratorPackageResult> {
+  const userMessage = businessContext?.trim()
+    ? `Business context: ${businessContext.trim()}\n\nSkill package to generate: ${description.trim()}`
+    : `Skill package to generate: ${description.trim()}`;
+
+  const message = await client.messages.create({
+    model: MODEL,
+    max_tokens: 8192,
+    system: SKILL_PACKAGE_GENERATOR_SYSTEM_PROMPT,
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  const raw = message.content[0];
+  if (raw.type !== "text") {
+    throw new ClaudeParseError("Unexpected response type from Claude.");
+  }
+
+  let parsed: unknown;
+  try {
+    const text = raw.text.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+    parsed = JSON.parse(text);
+  } catch {
+    throw new ClaudeParseError("Claude returned non-JSON response.");
+  }
+
+  if (!isGeneratorPackageResult(parsed)) {
+    throw new ClaudeParseError("Package response did not match expected schema.");
+  }
+
+  // Sanitize all file contents
+  parsed.files = parsed.files.map((f) => ({
+    ...f,
+    content: sanitizeModelOutputContent(f.content).content,
+  }));
 
   return parsed;
 }

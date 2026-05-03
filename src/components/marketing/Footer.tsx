@@ -27,7 +27,6 @@ export default function Footer() {
             <div className="flex flex-col gap-2">
               <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Support</p>
               <Link href="/contact" className="hover:text-foreground transition-colors">Contact Us</Link>
-              <Link href="/contact" className="hover:text-foreground transition-colors">Help &amp; FAQ</Link>
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Legal</p>

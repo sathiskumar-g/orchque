@@ -21,7 +21,7 @@ const colorMap: Record<ColorVariant, { card: string; value: string; dot: string 
 export default function StatsCard({ label, value, description, emoji, color = "default", subValue }: StatsCardProps) {
   const c = colorMap[color];
   return (
-    <div className={`rounded-2xl shadow-sm flex flex-col aspect-square ${c.card}`}>
+    <div className={`rounded-2xl shadow-sm flex flex-col ${c.card}`} style={{ width: 225, height: 225 }}>
       {/* Emoji area — top 55% */}
       <div className="flex-1 flex items-center justify-center">
         <span className="text-6xl select-none leading-none" role="img">{emoji}</span>
